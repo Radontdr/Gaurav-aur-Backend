@@ -16,4 +16,9 @@ app.use(express.json({limit:"16kb"}))
 app.use(express.urlencoded({extended:true,limit:"16kn"}))
 app.use(express.static("Public")) 
 
+import userroute from "./routes/register.route.js"
+//since we have imported the route ,not written it here so we cannot directly use app.get ,we have use app.use 
+app.use("/api/v1/users",userroute) // now control will go to register.router.js file
+
+// now  complete url will look like http//localhoast:8000/api/v1/users/register 
 export default app;

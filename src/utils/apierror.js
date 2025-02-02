@@ -19,3 +19,4 @@ class Apierror extends Error{
         }
     }
 }
+export default Apierror

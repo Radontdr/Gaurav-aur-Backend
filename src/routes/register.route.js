@@ -1,6 +1,18 @@
 import { Router } from "express";
-import asynchandler from "../utils/asynchandlers.js";
+import userregister from "../controllers/user.controller.js"
+import {upload} from "../middlewares/multer.middleware.js"
 const router=Router();
 
-router.route("/register").post(asynchandler)
+router.route("/register").post(
+    upload.fields([
+        {
+            name:"avatar",
+            maxCount:1
+        },
+        {
+            name:"coverimage",
+            maxCount:1
+        }
+    ]),
+    userregister)
 export default router

@@ -9,8 +9,8 @@ import jwt from "jsonwebtoken"
 const getAccesstokenandRefreshtoken=async(userId)=>{
     try {
         const user=await User.findById(userId)
-        const AccessToken=generateaccesstoken();
-        const RefreshToken=generaterefreshtoken();
+        const AccessToken=user.generateaccesstoken();
+        const RefreshToken=user.generaterefreshtoken();
         user.refreshtoken=RefreshToken;
         user.save({ValidateBeforeSave:false})
         return {AccessToken,RefreshToken}
@@ -118,7 +118,7 @@ const userLogout=asynchandler(async(req,res)=>{
         req.user._id,
         {
             $set:{
-                refreshtoken=undefined
+                refreshtoken:undefined
             }
         },
         {
@@ -141,7 +141,7 @@ const userLogout=asynchandler(async(req,res)=>{
 const refreshaccesstoken=asynchandler(async(req,res)=>{
     const incomingrefreshtoken=req.cookies.refreshtoken || req.body.refreshtoken
     if(!incomingrefreshtoken){
-        thow new apierror(401,"Invalid token")
+        throw new apierror(401,"Invalid token")
     }
     try {
         const validatedtoken=jwt.verify(incomingrefreshtoken,REFRESH_TOKEN_SECRET)
@@ -168,6 +168,83 @@ const refreshaccesstoken=asynchandler(async(req,res)=>{
     } catch (error) {
         throw new apierror(401,error?.message || "invalid refresh token")
     }
+
+})
+
+const updatepassword=asynchandler(async(req,res)=>{
+    const{oldpassword,newpassword}=req.body;
+    //here first i will apply auth.middleware to check whether the user is logged in or not jstverify
+    // so we access to req.user
+    const user=await User.findById(req.user?._id);
+    const isPasswordCorrect=user.passwordcorrect(oldpassword)
+    if(!isPasswordCorrect){
+        throw new apierror(400,"invalid old password")
+    }
+    user.password=newpassword
+    user.save({validateBeforeSave:false})
+    res.status(200)
+    .json(
+        new apiresponse(200,{},"Password has been changed successfully")
+    )
+})
+
+const getCurrentUser=asynchandler(async(req,res)=>{
+    res.status(200)
+    .json(new apiresponse(200,req.user,"Current User fetched"))
+})
+
+const updateUserDetails=asynchandler(async(req,res)=>{
+    const {fullname,email}=req.body
+    if(!email){
+        throw new apierror(400,"email is missing")
+    }
+    const user=await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set:{fullname,email}
+        },
+        {
+            new:true
+        }
+    )
+    res.status(200)
+    .json(new apiresponse(200,user,"User details updated"))
+})
+
+const updateUseravatar=asynchandler(async(req,res)=>{
+    const avatarfilepath=req.file?.avatar[0]?.path
+    if(!avatarfilepath){
+        throw new apierror(400,"file path invalid")
+    }
+    const avatar=await cloudinaryfileupload(avatarfilepath)
+    if(!avatar.url){
+        throw new apierror(400,"Error while uploading avatar file")
+    }
+    const user=await User.findByIdAndUpdate(req.user?._id,{
+        $set:{avatar:avatar.url}
+    },{
+        new:true
+    })
+    res.status(200)
+    .json(new apiresponse(200,user,"Avatar successfully changed"))
+
+})
+const updateUserCoverimage=asynchandler(async(req,res)=>{
+    const coverimagefilepath=req.file?.avatar[0]?.path
+    if(!coverimagefilepath){
+        throw new apierror(400,"file path invalid")
+    }
+    const coverimage=await cloudinaryfileupload(coverimagefilepath)
+    if(!coverimage.url){
+        throw new apierror(400,"Error while uploading coverimage file")
+    }
+    const user=await User.findByIdAndUpdate(req.user?._id,{
+        $set:{coverimage:coverimage.url}
+    },{
+        new:true
+    })
+    res.status(200)
+    .json(new apiresponse(200,user,"Coverimage successfully changed"))
 
 })
 export  {userRegister,userlogin,userLogout,refreshaccesstoken}

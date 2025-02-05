@@ -247,4 +247,80 @@ const updateUserCoverimage=asynchandler(async(req,res)=>{
     .json(new apiresponse(200,user,"Coverimage successfully changed"))
 
 })
-export  {userRegister,userlogin,userLogout,refreshaccesstoken}
+
+const deleteprevavtar=asynchandler(async(req,res)=>{
+    const user=await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set:{avatar:""}
+        },
+        {
+            new:true
+        }
+    )
+})
+
+const getUserChannelProfile=asynchandler(async(req,res)=>{
+    const {username}=req.params
+    if(!username?.trim()){
+        throw new apierror(400,"Invalid username")
+    }
+    const channel=User.aggregate([
+        {
+            $match:{username}
+        },
+        {
+            $lookup:{
+                from:"subscriptions",
+                localField:"_id",
+                foreignField:"channeluser",
+                as:"subscribers"
+            }
+        },
+        {
+            $lookup:{
+                from:"subscriptions",
+                localField:"_id",
+                foreignField:"subscriber",
+                as:"channelsubscribedto"
+            }
+        },
+        {
+            $addFields:{
+                SubscriberCount:{
+                    $size:"$subscribers"
+                },
+                channelSubscribedToCount:{
+                    $size:"$channelsubscribedto"
+                },
+                isSubscribed:{
+                    $cond:{
+                        if:{$in:[req.user?._id,"$subscribers.subscriber"]},
+                        then:true,
+                        else:false
+                    }
+                }
+            }
+        },
+        {
+            $project:{
+                username:1,
+                fullname:1,
+                email:1,
+                avatar:1,
+                coverimage:1,
+                isSubscribed:1,
+                SubscriberCount:1,
+                channelSubscribedToCount:1
+            }
+        }
+    ])
+    if(!channel?.length){
+        throw new apierror(400,"Channel does not exist")
+    }
+    console.log(channel)
+    res.status(200)
+    .json(new apiresponse(200,user,"User channel fetched successfully"))
+})
+export  {userRegister,userlogin,userLogout,refreshaccesstoken,updatepassword,
+    updateUserCoverimage,updateUserDetails,updateUseravatar,deleteprevavtar,getCurrentUser}

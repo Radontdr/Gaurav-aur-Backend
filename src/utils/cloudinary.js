@@ -1,5 +1,5 @@
 import { v2 as cloudinary } from 'cloudinary'
-import fs from "fs"
+import fs, { unlink } from "fs"
 
 cloudinary.config({ 
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -15,9 +15,14 @@ const cloudinaryfileupload=async (filepath)=>{
         })
         console.log("file has been uploaded")
         console.log(response.url)
+        fs.unlink(filepath,(err)=>{
+            console.log("Error occured while removing file after uploading")
+        })
         return response
     } catch (error) {
-        fs.unlinksync(filepath) // remove locally saved temporary file as upload is failed
+        fs.unlinksync(filepath,(err)=>{
+            console.log("Error occured while removing file when upload failed")
+        }) // remove locally saved temporary file as upload is failed
         return null;
     }
 }

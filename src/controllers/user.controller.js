@@ -5,6 +5,7 @@ import {User} from "../models/user.model.js"
 import {cloudinaryfileupload} from "../utils/cloudinary.js"
 import {verifyjwt} from "../middlewares/auth.middleware.js"
 import jwt from "jsonwebtoken"
+import mongoose from "mongoose"
 
 const getAccesstokenandRefreshtoken=async(userId)=>{
     try {
@@ -322,5 +323,54 @@ const getUserChannelProfile=asynchandler(async(req,res)=>{
     res.status(200)
     .json(new apiresponse(200,user,"User channel fetched successfully"))
 })
+
+const getwatchhistory=asynchandler(async(req,res)=>{
+    const user=await User.aggregate([
+        {
+            $match:new mongoose.Types.ObjectId(req.user?._id)
+        },
+        {
+            $lookup:{
+                from:"videos",
+                localField:"watchhistory",
+                foreignField:"_id",
+                as:"watchhistory",
+                pipeline:[
+                    {
+                        $lookup:{
+                            from:"users",
+                            localField:"owner",
+                            foreignField:"_id",
+                            as:"owner",
+                            pipeline:[
+                                {
+                                    $project:{
+                                        username:1,
+                                        email:1,
+                                        avatar:1
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    {
+                        $addFields:{
+                            owner:{
+                                $first:"$owner"
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ])
+    res.status(200)
+    .json(new apiresponse(
+        200,
+        user[0].watchhistory,
+        "Watch history fetched successfully"
+    ))
+})
 export  {userRegister,userlogin,userLogout,refreshaccesstoken,updatepassword,
-    updateUserCoverimage,updateUserDetails,updateUseravatar,deleteprevavtar,getCurrentUser}
+    updateUserCoverimage,updateUserDetails,updateUseravatar,
+    deleteprevavtar,getCurrentUser,getUserChannelProfile}

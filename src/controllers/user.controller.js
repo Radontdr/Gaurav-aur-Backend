@@ -118,8 +118,8 @@ const userLogout=asynchandler(async(req,res)=>{
     const user=User.findByIdAndUpdate(
         req.user._id,
         {
-            $set:{
-                refreshtoken:undefined
+            $unset:{
+                refreshtoken:1 //the value which has to be unset ,that values flag is set 
             }
         },
         {
@@ -320,6 +320,7 @@ const getUserChannelProfile=asynchandler(async(req,res)=>{
         throw new apierror(400,"Channel does not exist")
     }
     console.log(channel)
+    const user=User.findById(req.user?._id)
     res.status(200)
     .json(new apiresponse(200,user,"User channel fetched successfully"))
 })
@@ -373,4 +374,4 @@ const getwatchhistory=asynchandler(async(req,res)=>{
 })
 export  {userRegister,userlogin,userLogout,refreshaccesstoken,updatepassword,
     updateUserCoverimage,updateUserDetails,updateUseravatar,
-    deleteprevavtar,getCurrentUser,getUserChannelProfile}
+    deleteprevavtar,getCurrentUser,getUserChannelProfile,getwatchhistory}

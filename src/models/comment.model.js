@@ -18,5 +18,6 @@ const CommentSchema=new mongoose.Schema({
 {
     timestamps:true
 })
+
 CommentSchema.plugin(mongooseAggregatePaginate)
 export const Comment=mongoose.model("Comment",CommentSchema)

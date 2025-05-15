@@ -48,15 +48,20 @@ const userSchema=new mongoose.Schema({
 )
 // basically we will apply a middleware named pre which will check just before saving the data in database
 userSchema.pre("save",async function(next){
-    if(!this.isModified(this.password)) return next();
-    await bcrypt.hash(this.password,10)
-    next()
+    if(!this.isModified("password")) return next();
+    try {
+        this.password=await bcrypt.hash(this.password,10)
+        next()
+    } catch (error) {
+        next(error)
+    }
+    
 })
-userSchema.methods.passwordcorrect= async function(password){
+userSchema.methods.ispasswordcorrect= async function(password){
     return  await bcrypt.compare(password,this.password)
 }
 userSchema.methods.generateaccesstoken=function(){
-    jwt.sign(
+    return jwt.sign(
         {
             _id:this._id,
             email:this.email,
@@ -70,7 +75,7 @@ userSchema.methods.generateaccesstoken=function(){
     )
 }
 userSchema.methods.generaterefreshtoken=function(){
-    jwt.sign(
+    return jwt.sign(
         {
             _id:this._id,
         },

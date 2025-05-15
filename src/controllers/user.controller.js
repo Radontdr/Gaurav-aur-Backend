@@ -53,7 +53,7 @@ const userRegister=asynchandler(async(req,res)=>{
     const user= await User.create({
         fullname,
         username:username.toLowerCase(),
-        email,
+        email:email.toLowerCase(),
         password,
         avatar:avatar.url,
         coverimage:coverimage?.url || ""
@@ -71,13 +71,13 @@ const userRegister=asynchandler(async(req,res)=>{
 
 const userlogin=asynchandler(async(req,res)=>{
     const {username,email,password}=req.body;
-    if(!(username || email)){
-        throw new apierror(400,"user or email is not registered")
+    if(!username && !email){
+        throw new apierror(400,"user or email is required")
     }
 
     // fetching the registered user from the database 
     const user= await User.findOne({
-        $or:[{ username },{ email }]
+        $or:[{ username:username?.toLowerCase() },{ email:email?.toLowerCase() }]
     })
 
     // checking whether the user exists or not 
@@ -86,7 +86,7 @@ const userlogin=asynchandler(async(req,res)=>{
     }
 
     //checking the password by mtaching it with the one stored in db with the method we have defined in the usermodel
-    const ispasswordvalid=await user.passwordcorrect(password);
+    const ispasswordvalid=await user.ispasswordcorrect(password);
     if(!ispasswordvalid){
         throw new apierror(404,"user does not exist")
     }
@@ -140,12 +140,12 @@ const userLogout=asynchandler(async(req,res)=>{
 })
 
 const refreshaccesstoken=asynchandler(async(req,res)=>{
-    const incomingrefreshtoken=req.cookies.refreshtoken || req.body.refreshtoken
+    const incomingrefreshtoken=req.cookies.RefreshToken || req.body.RefreshToken
     if(!incomingrefreshtoken){
         throw new apierror(401,"Invalid token")
     }
     try {
-        const validatedtoken=jwt.verify(incomingrefreshtoken,REFRESH_TOKEN_SECRET)
+        const validatedtoken=jwt.verify(incomingrefreshtoken,process.env.REFRESH_TOKEN_SECRET)
         const user=await User.findById(validatedtoken?._id)
         if(!user){
             throw new apierror(400,"Invalid token")
@@ -177,7 +177,7 @@ const updatepassword=asynchandler(async(req,res)=>{
     //here first i will apply auth.middleware to check whether the user is logged in or not jstverify
     // so we access to req.user
     const user=await User.findById(req.user?._id);
-    const isPasswordCorrect=user.passwordcorrect(oldpassword)
+    const isPasswordCorrect=user.ispasswordcorrect(oldpassword)
     if(!isPasswordCorrect){
         throw new apierror(400,"invalid old password")
     }
@@ -213,7 +213,7 @@ const updateUserDetails=asynchandler(async(req,res)=>{
 })
 
 const updateUseravatar=asynchandler(async(req,res)=>{
-    const avatarfilepath=req.file?.avatar[0]?.path
+    const avatarfilepath=req.file?.path
     if(!avatarfilepath){
         throw new apierror(400,"file path invalid")
     }
@@ -231,7 +231,7 @@ const updateUseravatar=asynchandler(async(req,res)=>{
 
 })
 const updateUserCoverimage=asynchandler(async(req,res)=>{
-    const coverimagefilepath=req.file?.avatar[0]?.path
+    const coverimagefilepath=req.file?.path
     if(!coverimagefilepath){
         throw new apierror(400,"file path invalid")
     }
@@ -266,9 +266,9 @@ const getUserChannelProfile=asynchandler(async(req,res)=>{
     if(!username?.trim()){
         throw new apierror(400,"Invalid username")
     }
-    const channel=User.aggregate([
+    const channel=await User.aggregate([
         {
-            $match:{username}
+            $match:{username:username.toLowerCase()}
         },
         {
             $lookup:{
@@ -296,7 +296,7 @@ const getUserChannelProfile=asynchandler(async(req,res)=>{
                 },
                 isSubscribed:{
                     $cond:{
-                        if:{$in:[req.user?._id,"$subscribers.subscriber"]},
+                        if:{$in:[new mongoose.Types.ObjectId(req.user?._id),"$subscribers.subscriber"]},
                         then:true,
                         else:false
                     }
@@ -322,13 +322,13 @@ const getUserChannelProfile=asynchandler(async(req,res)=>{
     console.log(channel)
     const user=User.findById(req.user?._id)
     res.status(200)
-    .json(new apiresponse(200,user,"User channel fetched successfully"))
+    .json(new apiresponse(200,channel[0],"User channel fetched successfully"))
 })
 
 const getwatchhistory=asynchandler(async(req,res)=>{
     const user=await User.aggregate([
         {
-            $match:new mongoose.Types.ObjectId(req.user?._id)
+            $match:{_id:new mongoose.Types.ObjectId(req.user?._id)}
         },
         {
             $lookup:{
